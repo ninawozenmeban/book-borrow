@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>图书借还书系统（含扫码）</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+      background-color: #f7f7f7;
+    }
+    input, button {
+      margin: 5px 0;
+      padding: 10px;
+      width: 100%;
+      font-size: 16px;
+    }
+    button {
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: white;
+    }
+    table, th, td {
+      border: 1px solid #999;
+    }
+    th, td {
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .btn-group button {
+      flex: 1;
+    }
+    #reader {
+      width: 100%;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h2>📚 图书借还书登记</h2>
+
+  <label>书名：</label>
+  <input type="text" id="bookName" placeholder="请输入书名" />
+
+  <label>条码号（点击扫码或手动输入）：</label>
+  <input type="text" id="barcode" placeholder="可手动输入或扫码" />
+  <button onclick="startScan()">📷 扫码识别条码号</button>
+
+  <div id="reader"></div>
+
+  <label>借书人：</label>
+  <input type="text" id="borrower" placeholder="请输入借书人姓名" />
+
+  <label>借出日期：</label>
+  <input type="date" id="borrowDate" />
+
+  <label>还书日期：</label>
+  <input type="date" id="returnDate" />
+
+  <button onclick="addRecord()">📥 登记借阅信息</button>
+
+  <div class="btn-group">
+    <button onclick="exportCSV()">📤 导出记录（CSV）</button>
+    <button onclick="clearRecords()" style="background-color: #f44336; color: white;">🗑️ 清空所有记录</button>
+  </div>
+
+  <table id="recordTable">
+    <thead>
+      <tr>
+        <th>书名</th>
+        <th>条码号</th>
+        <th>借书人</th>
+        <th>借出日期</th>
+        <th>还书日期</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // 加载已有数据
+    window.onload = () => {
+      const saved = localStorage.getItem("borrowRecords");
+      if (saved) {
+        document.getElementById("recordTable").getElementsByTagName('tbody')[0].innerHTML = saved;
+      }
+    };
+
+    function addRecord() {
+      const book = document.getElementById('bookName').value.trim();
+      const barcode = document.getElementById('barcode').value.trim();
+      const person = document.getElementById('borrower').value.trim();
+      let borrowDate = document.getElementById('borrowDate').value;
+      const returnDate = document.getElementById('returnDate').value;
+
+      if (!book || !person) {
+        alert("请填写书名和借书人！");
+        return;
+      }
+
+      if (!borrowDate) {
+        const today = new Date();
+        borrowDate = today.toISOString().split('T')[0];
+      }
+
+      const table = document.getElementById("recordTable").getElementsByTagName('tbody')[0];
+      const newRow = table.insertRow();
+      newRow.insertCell(0).textContent = book;
+      newRow.insertCell(1).textContent = barcode;
+      newRow.insertCell(2).textContent = person;
+      newRow.insertCell(3).textContent = borrowDate;
+      newRow.insertCell(4).textContent = returnDate;
+
+      document.getElementById('bookName').value = '';
+      document.getElementById('barcode').value = '';
+      document.getElementById('borrower').value = '';
+      document.getElementById('borrowDate').value = '';
+      document.getElementById('returnDate').value = '';
+
+      saveToLocal();
+    }
+
+    function saveToLocal() {
+      const rows = document.getElementById("recordTable").getElementsByTagName('tbody')[0].innerHTML;
+      localStorage.setItem("borrowRecords", rows);
+    }
+
+    function clearRecords() {
+      if (confirm("确定要清空所有记录吗？此操作无法恢复。")) {
+        document.getElementById("recordTable").getElementsByTagName('tbody')[0].innerHTML = '';
+        localStorage.removeItem("borrowRecords");
+      }
+    }
+
+    function exportCSV() {
+      const rows = [...document.querySelectorAll("table tr")];
+      const csvContent = rows.map(row => {
+        const cells = [...row.querySelectorAll("th, td")];
+        return cells.map(cell => `"${cell.textContent}"`).join(",");
+      }).join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "借还书记录.csv";
+      link.click();
+    }
+
+    function startScan() {
+      const reader = document.getElementById("reader");
+      reader.style.display = "block";
+
+      const html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 100 }
+        },
+        (decodedText) => {
+          document.getElementById("barcode").value = decodedText;
+          html5QrCode.stop().then(() => {
+            reader.innerHTML = "";
+            reader.style.display = "none";
+          });
+        },
+        (errorMessage) => {
+          // console.log("扫描中", errorMessage);
+        }
+      ).catch((err) => {
+        alert("摄像头无法启动：" + err);
+      });
+    }
+  </script>
+</body>
+</html>
