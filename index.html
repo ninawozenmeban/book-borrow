@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>图书借还书系统（含扫码）</title>
+  <title>图书借还书系统</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body {
@@ -52,12 +52,12 @@
   </style>
 </head>
 <body>
-  <h2>📚 图书借还书登记</h2>
+  <h2>📚 图书借还登记</h2>
 
-  <label>书名：</label>
+  <label>图书书名：</label>
   <input type="text" id="bookName" placeholder="请输入书名" />
 
-  <label>条码号（点击扫码或手动输入）：</label>
+  <label>图书条码号（点击扫码或手动输入）：</label>
   <input type="text" id="barcode" placeholder="可手动输入或扫码" />
   <button onclick="startScan()">📷 扫码识别条码号</button>
 
@@ -82,8 +82,8 @@
   <table id="recordTable">
     <thead>
       <tr>
-        <th>书名</th>
-        <th>条码号</th>
+        <th>图书书名</th>
+        <th>图书条码号</th>
         <th>借书人</th>
         <th>借出日期</th>
         <th>还书日期</th>
@@ -93,6 +93,12 @@
   </table>
 
   <script>
+    // 图书数据
+    const booksData = [
+      { "isbn": "978-7-122-43020-5", "name": "生物分离工程实验技术", "author": "某某作者" },
+      { "isbn": "978-7-111-22222-8", "name": "现代化学实验", "author": "另一个作者" }
+    ];
+
     // 加载已有数据
     window.onload = () => {
       const saved = localStorage.getItem("borrowRecords");
@@ -109,7 +115,7 @@
       const returnDate = document.getElementById('returnDate').value;
 
       if (!book || !person) {
-        alert("请填写书名和借书人！");
+        alert("请填写图书书名和借书人！");
         return;
       }
 
@@ -174,6 +180,12 @@
         },
         (decodedText) => {
           document.getElementById("barcode").value = decodedText;
+          const book = searchBookByISBN(decodedText);
+          if (book) {
+            document.getElementById("bookName").value = book.name;
+          } else {
+            alert("未找到图书！");
+          }
           html5QrCode.stop().then(() => {
             reader.innerHTML = "";
             reader.style.display = "none";
@@ -185,6 +197,10 @@
       ).catch((err) => {
         alert("摄像头无法启动：" + err);
       });
+    }
+
+    function searchBookByISBN(isbn) {
+      return booksData.find(b => b.isbn === isbn);
     }
   </script>
 </body>
