@@ -13,6 +13,9 @@
       margin: auto;
       background-color: #f7f7f7;
     }
+    h2 {
+      text-align: center;
+    }
     input, button {
       margin: 5px 0;
       padding: 10px;
@@ -55,7 +58,7 @@
   <h2>📚 图书借还登记</h2>
 
   <label>图书书名：</label>
-  <input type="text" id="bookName" placeholder="请输入书名" />
+  <input type="text" id="bookName" placeholder="扫码自动生成书名" readonly />
 
   <label>图书条码号（点击扫码或手动输入）：</label>
   <input type="text" id="barcode" placeholder="可手动输入或扫码" />
@@ -63,8 +66,11 @@
 
   <div id="reader"></div>
 
-  <label>借书人：</label>
+  <label>借书人姓名：</label>
   <input type="text" id="borrower" placeholder="请输入借书人姓名" />
+
+  <label>证件号：</label>
+  <input type="text" id="idCard" placeholder="用于重名查重" />
 
   <label>借出日期：</label>
   <input type="date" id="borrowDate" />
@@ -85,6 +91,7 @@
         <th>图书书名</th>
         <th>图书条码号</th>
         <th>借书人</th>
+        <th>证件号</th>
         <th>借出日期</th>
         <th>还书日期</th>
       </tr>
@@ -96,10 +103,10 @@
     // 图书数据
     const booksData = [
       { "isbn": "978-7-122-43020-5", "name": "生物分离工程实验技术", "author": "某某作者" },
-      { "isbn": "978-7-111-22222-8", "name": "现代化学实验", "author": "另一个作者" }
+      { "isbn": "9787111222228", "name": "现代化学实验", "author": "另一个作者" }
     ];
 
-    // 加载已有数据
+    // 加载记录
     window.onload = () => {
       const saved = localStorage.getItem("borrowRecords");
       if (saved) {
@@ -111,12 +118,25 @@
       const book = document.getElementById('bookName').value.trim();
       const barcode = document.getElementById('barcode').value.trim();
       const person = document.getElementById('borrower').value.trim();
+      const idCard = document.getElementById('idCard').value.trim();
       let borrowDate = document.getElementById('borrowDate').value;
       const returnDate = document.getElementById('returnDate').value;
 
-      if (!book || !person) {
-        alert("请填写图书书名和借书人！");
+      if (!book || !person || !idCard) {
+        alert("请填写完整信息：书名、借书人、证件号！");
         return;
+      }
+
+      // 重名查重
+      const rows = document.querySelectorAll("#recordTable tbody tr");
+      for (let row of rows) {
+        const name = row.cells[2].textContent;
+        const id = row.cells[3].textContent;
+        if (name === person && id !== idCard) {
+          if (!confirm(`已存在同名借书人，但证件号不同，是否继续？`)) {
+            return;
+          }
+        }
       }
 
       if (!borrowDate) {
@@ -129,12 +149,14 @@
       newRow.insertCell(0).textContent = book;
       newRow.insertCell(1).textContent = barcode;
       newRow.insertCell(2).textContent = person;
-      newRow.insertCell(3).textContent = borrowDate;
-      newRow.insertCell(4).textContent = returnDate;
+      newRow.insertCell(3).textContent = idCard;
+      newRow.insertCell(4).textContent = borrowDate;
+      newRow.insertCell(5).textContent = returnDate;
 
       document.getElementById('bookName').value = '';
       document.getElementById('barcode').value = '';
       document.getElementById('borrower').value = '';
+      document.getElementById('idCard').value = '';
       document.getElementById('borrowDate').value = '';
       document.getElementById('returnDate').value = '';
 
@@ -184,7 +206,7 @@
           if (book) {
             document.getElementById("bookName").value = book.name;
           } else {
-            alert("未找到图书！");
+            alert("未找到图书信息！");
           }
           html5QrCode.stop().then(() => {
             reader.innerHTML = "";
@@ -192,7 +214,7 @@
           });
         },
         (errorMessage) => {
-          // console.log("扫描中", errorMessage);
+          // 忽略扫描错误
         }
       ).catch((err) => {
         alert("摄像头无法启动：" + err);
@@ -200,9 +222,9 @@
     }
 
     function searchBookByISBN(isbn) {
-      return booksData.find(b => b.isbn === isbn);
+      const normalized = isbn.replace(/-/g, '');
+      return booksData.find(b => b.isbn.replace(/-/g, '') === normalized);
     }
   </script>
 </body>
 </html>
-
